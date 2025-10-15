@@ -2,40 +2,127 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>ログイン</title>
+  <title>Supabase Discord風チャット</title>
+  <style>
+    body { font-family: sans-serif; display:flex; height:100vh; margin:0; }
+    #sidebar { width:200px; background:#2f3136; color:white; padding:10px; }
+    #chat { flex:1; display:flex; flex-direction:column; background:#36393f; color:white; }
+    #messages { flex:1; overflow-y:auto; padding:10px; }
+    #input { display:flex; padding:10px; background:#40444b; }
+    #input input[type=text] { flex:1; margin-right:5px; }
+    .message { margin-bottom:10px; }
+  </style>
 </head>
 <body>
-  <h2>ログイン / サインアップ</h2>
-
-  <input type="email" id="email" placeholder="メールアドレス"><br>
-  <input type="password" id="password" placeholder="パスワード"><br>
-  <button id="signup">サインアップ</button>
-  <button id="login">ログイン</button>
-
-  <p id="status"></p>
+  <div id="sidebar">
+    <h3>チャンネル</h3>
+    <div id="channel-list"></div>
+  </div>
+  <div id="chat">
+    <div id="messages"></div>
+    <div id="input">
+      <input type="text" id="message-input" placeholder="メッセージを入力">
+      <input type="file" id="file-input">
+      <button id="send-btn">送信</button>
+    </div>
+  </div>
 
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-    const supabase = createClient('https://mmjtbafmzjcvmujlpqbu.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tanRiYWZtempjdm11amxwcWJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1MTkzMjYsImV4cCI6MjA3NjA5NTMyNn0.7gDEc4myzwDt7DuRIM97735Eyp__6eUxe5cWwA1KoDE')
+    const supabase = createClient('YOUR_SUPABASE_URL', 'YOUR_SUPABASE_ANON_KEY')
 
-    const status = document.getElementById('status')
+    let user = null;
+    let selectedChannel = null;
 
-    document.getElementById('signup').addEventListener('click', async () => {
-      const email = document.getElementById('email').value
-      const password = document.getElementById('password').value
-      const { data, error } = await supabase.auth.signUp({ email, password })
-      if (error) status.textContent = 'サインアップ失敗: ' + error.message
-      else status.textContent = 'サインアップ成功！メール確認してね'
-    })
+    async function login() {
+      const email = prompt("メールアドレス");
+      const password = prompt("パスワード");
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return alert(error.message);
+      user = data.user;
+      alert("ログイン成功: " + user.email);
+      fetchChannels();
+    }
 
-    document.getElementById('login').addEventListener('click', async () => {
-      const email = document.getElementById('email').value
-      const password = document.getElementById('password').value
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) status.textContent = 'ログイン失敗: ' + error.message
-      else status.textContent = 'ログイン成功！ユーザーID: ' + data.user.id
-    })
+    async function fetchChannels() {
+      const { data } = await supabase.from('channels').select('*').order('id');
+      const channelList = document.getElementById('channel-list');
+      channelList.innerHTML = '';
+      data.forEach(ch => {
+        const div = document.createElement('div');
+        div.textContent = ch.name;
+        div.style.cursor = 'pointer';
+        div.onclick = () => selectChannel(ch);
+        channelList.appendChild(div);
+      });
+      if (data.length) selectChannel(data[0]);
+    }
+
+    async function selectChannel(channel) {
+      selectedChannel = channel;
+      fetchMessages();
+      subscribeMessages();
+    }
+
+    async function fetchMessages() {
+      if (!selectedChannel) return;
+      const { data } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('channel_id', selectedChannel.id)
+        .order('created_at');
+      const messagesDiv = document.getElementById('messages');
+      messagesDiv.innerHTML = '';
+      data.forEach(addMessageToDOM);
+    }
+
+    function addMessageToDOM(msg) {
+      const messagesDiv = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.className = 'message';
+      div.innerHTML = `<b>${msg.user_id}</b>: ${msg.content}` + (msg.attachment_url ? `<br><a href="${msg.attachment_url}" target="_blank">添付ファイル</a>` : '');
+      messagesDiv.appendChild(div);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    let subscription = null;
+    function subscribeMessages() {
+      if (!selectedChannel) return;
+      if (subscription) supabase.removeSubscription(subscription);
+      subscription = supabase
+        .from(`messages:channel_id=eq.${selectedChannel.id}`)
+        .on('INSERT', payload => addMessageToDOM(payload.new))
+        .subscribe();
+    }
+
+    document.getElementById('send-btn').addEventListener('click', async () => {
+      const content = document.getElementById('message-input').value;
+      const fileInput = document.getElementById('file-input');
+      let attachment_url = null;
+
+      if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        const { data } = await supabase.storage.from('attachments').upload(`files/${Date.now()}_${file.name}`, file);
+        attachment_url = data.path;
+      }
+
+      if (!content && !attachment_url) return;
+
+      await supabase.from('messages').insert([{
+        channel_id: selectedChannel.id,
+        user_id: user.id,
+        content,
+        attachment_url
+      }]);
+
+      document.getElementById('message-input').value = '';
+      fileInput.value = '';
+    });
+
+    // 初回ログイン
+    login();
   </script>
 </body>
 </html>
+
