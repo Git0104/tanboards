@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>ログイン</title>
+</head>
+<body>
+  <h2>ログイン / サインアップ</h2>
+
+  <input type="email" id="email" placeholder="メールアドレス"><br>
+  <input type="password" id="password" placeholder="パスワード"><br>
+  <button id="signup">サインアップ</button>
+  <button id="login">ログイン</button>
+
+  <p id="status"></p>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+    const supabase = createClient('https://mmjtbafmzjcvmujlpqbu.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tanRiYWZtempjdm11amxwcWJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1MTkzMjYsImV4cCI6MjA3NjA5NTMyNn0.7gDEc4myzwDt7DuRIM97735Eyp__6eUxe5cWwA1KoDE')
+
+    const status = document.getElementById('status')
+
+    document.getElementById('signup').addEventListener('click', async () => {
+      const email = document.getElementById('email').value
+      const password = document.getElementById('password').value
+      const { data, error } = await supabase.auth.signUp({ email, password })
+      if (error) status.textContent = 'サインアップ失敗: ' + error.message
+      else status.textContent = 'サインアップ成功！メール確認してね'
+    })
+
+    document.getElementById('login').addEventListener('click', async () => {
+      const email = document.getElementById('email').value
+      const password = document.getElementById('password').value
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) status.textContent = 'ログイン失敗: ' + error.message
+      else status.textContent = 'ログイン成功！ユーザーID: ' + data.user.id
+    })
+  </script>
+</body>
+</html>
