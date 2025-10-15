@@ -11,7 +11,7 @@
   #input { display:flex; padding:10px; background:#40444b; }
   #input input[type=text] { flex:1; margin-right:5px; }
   .message { margin-bottom:10px; }
-  button { cursor:pointer; }
+  button { cursor:pointer; margin-top:5px; width:100%; }
 </style>
 </head>
 <body>
@@ -19,8 +19,8 @@
   <h3>チャンネル</h3>
   <div id="channel-list"></div>
   <hr>
-  <button onclick="signUp()">サインアップ</button>
-  <button onclick="login()">ログイン</button>
+  <button id="signup-btn">サインアップ</button>
+  <button id="login-btn">ログイン</button>
 </div>
 <div id="chat">
   <div id="messages"></div>
@@ -34,7 +34,8 @@
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-const supabase = createClient('https://mmjtbafmzjcvmujlpqbu.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tanRiYWZtempjdm11amxwcWJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1MTkzMjYsImV4cCI6MjA3NjA5NTMyNn0.7gDEc4myzwDt7DuRIM97735Eyp__6eUxe5cWwA1KoDE');
+const supabase = createClient('YOUR_SUPABASE_URL','YOUR_SUPABASE_ANON_KEY');
+
 let user = null;
 let selectedChannel = null;
 let subscription = null;
@@ -50,7 +51,7 @@ async function signUp() {
   if (error) return alert("サインアップ失敗: " + error.message);
 
   await supabase.from('profiles').insert([{ id: data.user.id, username }]);
-  alert("サインアップ成功！確認メールをチェックしてください");
+  alert("サインアップ成功！メールを確認してください");
 }
 
 // ---------------- ログイン ----------------
@@ -124,7 +125,7 @@ function subscribeMessages() {
 }
 
 // ---------------- メッセージ送信 ----------------
-document.getElementById('send-btn').addEventListener('click', async () => {
+async function sendMessage() {
   if (!user || !selectedChannel) return alert("ログインしてチャンネルを選択してください");
 
   const content = document.getElementById('message-input').value;
@@ -148,8 +149,14 @@ document.getElementById('send-btn').addEventListener('click', async () => {
 
   document.getElementById('message-input').value = '';
   fileInput.value = '';
-});
+}
+
+// ---------------- ボタンにイベントリスナーを追加 ----------------
+document.getElementById('signup-btn').addEventListener('click', signUp);
+document.getElementById('login-btn').addEventListener('click', login);
+document.getElementById('send-btn').addEventListener('click', sendMessage);
 
 </script>
 </body>
 </html>
+
