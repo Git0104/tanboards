@@ -1,13 +1,53 @@
-<!DICTYPE html>
-<html lang="ja">
+<!DOCTYPE html>
+<html>
 <head>
-  <meta charset="UTF-8">
-  <link rel="stylesheet" href="style.css">
+  <title>チャットサイト</title>
 </head>
-  <body>
-    <h1 class="sitetitle">TanBoard</h1>
-  </body>
+<body>
+  <h1>リアルタイムチャット</h1>
+  
+  <div id="messages" style="border:1px solid #ccc; height:300px; overflow:auto;"></div>
+  
+  <input type="text" id="inputMessage" placeholder="メッセージを入力">
+  <button id="sendBtn">送信</button>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // Supabase初期化
+    const supabaseUrl = 'YOUR_SUPABASE_URL';
+    const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
+    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+    // メッセージ表示
+    async function loadMessages() {
+      const { data } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
+      const div = document.getElementById('messages');
+      div.innerHTML = '';
+      data.forEach(msg => {
+        const p = document.createElement('p');
+        p.textContent = msg.content;
+        div.appendChild(p);
+      });
+    }
+
+    // リアルタイム受信
+    supabase.channel('public:messages')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+        const div = document.getElementById('messages');
+        const p = document.createElement('p');
+        p.textContent = payload.new.content;
+        div.appendChild(p);
+      }).subscribe();
+
+    // メッセージ送信
+    document.getElementById('sendBtn').addEventListener('click', async () => {
+      const input = document.getElementById('inputMessage');
+      const msg = input.value;
+      input.value = '';
+      await supabase.from('messages').insert([{ content: msg }]);
+    });
+
+    loadMessages();
+  </script>
+</body>
 </html>
-
-
-
