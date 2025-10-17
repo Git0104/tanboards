@@ -11,44 +11,48 @@
   <input type="text" id="inputMessage" placeholder="メッセージを入力">
   <button id="sendBtn">送信</button>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
-    // Supabase初期化
-    const supabaseUrl = 'https://wqnsdxiovtghxjroluyt.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnNkeGlvdnRnaHhqcm9sdXl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2ODkzNzgsImV4cCI6MjA3NjI2NTM3OH0.r5V8nrhmtPrQ2MV4vTGM9H5rUCk436zSbYjIoL1yM1Y';
-    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+ <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const supabaseUrl = 'https://wqnsdxiovtghxjroluyt.supabase.co';
+  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnNkeGlvdnRnaHhqcm9sdXl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2ODkzNzgsImV4cCI6MjA3NjI2NTM3OH0.r5V8nrhmtPrQ2MV4vTGM9H5rUCk436zSbYjIoL1yM1Y';
+  const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-    // メッセージ表示
-    async function loadMessages() {
-      const { data } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
-      const div = document.getElementById('messages');
-      div.innerHTML = '';
-      data.forEach(msg => {
-        const p = document.createElement('p');
-        p.textContent = msg.content;
-        div.appendChild(p);
-      });
-    }
+  const messagesDiv = document.getElementById('messages');
+  const input = document.getElementById('inputMessage');
+  const sendBtn = document.getElementById('sendBtn');
 
-    // リアルタイム受信
-    supabase.channel('public:messages')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-        const div = document.getElementById('messages');
+  // 過去メッセージ読み込み
+  async function loadMessages() {
+    const { data } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
+    messagesDiv.innerHTML = '';
+    data.forEach(msg => {
+      const p = document.createElement('p');
+      p.textContent = msg.content;
+      messagesDiv.appendChild(p);
+    });
+  }
+
+  // リアルタイム受信
+  supabase.channel('public:messages')
+    .on(
+      'postgres_changes', 
+      { event: 'INSERT', schema: 'public', table: 'messages' }, 
+      payload => {
         const p = document.createElement('p');
         p.textContent = payload.new.content;
-        div.appendChild(p);
-      }).subscribe();
+        messagesDiv.appendChild(p);
+      }
+    )
+    .subscribe();
 
-    // メッセージ送信
-    document.getElementById('sendBtn').addEventListener('click', async () => {
-      const input = document.getElementById('inputMessage');
-      const msg = input.value;
-      input.value = '';
-      await supabase.from('messages').insert([{ content: msg }]);
-    });
+  // メッセージ送信
+  sendBtn.addEventListener('click', async () => {
+    const msg = input.value;
+    input.value = '';
+    await supabase.from('messages').insert([{ content: msg }]);
+  });
 
-    loadMessages();
-  </script>
-</body>
-</html>
-
+  loadMessages();
+});
+</script>
